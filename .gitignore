@@ -1,0 +1,19 @@
+# Scratch files
+*.csv
+*.tsv
+*.txt
+
+# Output files
+#   Markdown files are ignored by default
+#   but keep the permanent project docs
+*.md
+!README.md
+!CHANGELOG.md
+
+# Python caches
+__pycache__/
+*.py[cod]
+.ruff_cache/
+
+# macOS
+.DS_Store
