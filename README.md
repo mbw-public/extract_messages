@@ -118,6 +118,8 @@ search_messages.py [OPTIONS] [PATTERN]
 -A N                    show N messages after each match
 -B N                    show N messages before each match
 -C N                    show N messages before and after each match
+-w N, --max-width N     truncate each match to N chars, keeping the match
+                        visible (default: 200; 0 = no limit; ignored with -A/-B/-C)
 -p, --pretty            force color and message numbers
 --color auto|always|never
 --results N             max total matching messages (default: 20)
@@ -151,6 +153,9 @@ search_messages.py -c --all homebrew
 
 # List threads that mention Codeberg
 search_messages.py -l Codeberg
+
+# Show the full text of a match instead of the 200-char snippet
+search_messages.py -w 0 "M5 Max"
 
 # Write results to a file
 search_messages.py --all --out results.md "kitty"

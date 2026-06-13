@@ -265,17 +265,20 @@ def highlight(text, rx, st):
     return rx.sub(lambda m: f"{st.match}{m.group(0)}{st.reset}", text)
 
 
-def clip(text, rx):
-    """Truncate to TRUNCATE_AT chars while keeping the first match visible."""
-    if len(text) <= TRUNCATE_AT:
+def clip(text, rx, max_width):
+    """Truncate to max_width chars while keeping the first match visible.
+
+    max_width == 0 disables truncation (full message shown).
+    """
+    if max_width == 0 or len(text) <= max_width:
         return text
     m = rx.search(text)
     start = m.start() if m else 0
-    if start <= TRUNCATE_AT - MATCH_LEAD:
-        return text[:TRUNCATE_AT] + "…"
+    if start <= max_width - MATCH_LEAD:
+        return text[:max_width] + "…"
     win_start = start - MATCH_LEAD
-    window = text[win_start : win_start + TRUNCATE_AT]
-    suffix = "…" if win_start + TRUNCATE_AT < len(text) else ""
+    window = text[win_start : win_start + max_width]
+    suffix = "…" if win_start + max_width < len(text) else ""
     return "…" + window + suffix
 
 
@@ -313,7 +316,7 @@ def merge_windows(match_indices, before, after, n_rows):
     return windows
 
 
-def render_normal(results, label_map, st, show_num, rx):
+def render_normal(results, label_map, st, show_num, rx, max_width):
     lines = []
     for t, cid in enumerate(thread_order(results)):
         if t:
@@ -324,7 +327,9 @@ def render_normal(results, label_map, st, show_num, rx):
             if j:
                 lines.append(f"{st.dim}--{st.reset}")
             lines.append(header_line(row, ":", show_num, st))
-            lines.extend(body_lines(highlight(clip(get_text(row), rx), rx, st)))
+            lines.extend(
+                body_lines(highlight(clip(get_text(row), rx, max_width), rx, st))
+            )
     return lines
 
 
@@ -475,6 +480,16 @@ def parse_args():
         help="Show N messages before and after each match",
     )
     out.add_argument(
+        "-w",
+        "--max-width",
+        type=int,
+        default=TRUNCATE_AT,
+        metavar="N",
+        help=f"Truncate each match to N chars, keeping the match visible "
+        f"(default: {TRUNCATE_AT}; use 0 for no limit). "
+        f"No effect in context mode, which always shows full messages.",
+    )
+    out.add_argument(
         "-p", "--pretty", action="store_true", help="Force color and message numbers"
     )
     out.add_argument(
@@ -526,6 +541,8 @@ def parse_args():
         ap.error("--results must be >= 1 (use --all for no limit)")
     if args.max_count is not None and args.max_count < 1:
         ap.error("--max-count must be >= 1")
+    if args.max_width < 0:
+        ap.error("--max-width must be >= 0 (use 0 for no limit)")
     return args
 
 
@@ -578,7 +595,7 @@ def main():
         if keep_rows:
             lines = render_context(results, label_map, st, show_num, rx, before, after)
         else:
-            lines = render_normal(results, label_map, st, show_num, rx)
+            lines = render_normal(results, label_map, st, show_num, rx, args.max_width)
 
     output = "\n".join(lines) + "\n"
     if to_file:
