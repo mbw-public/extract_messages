@@ -183,7 +183,12 @@ uv run --no-project search_messages_web.py --host 0.0.0.0 --port 8765
 ```
 
 Then visit `http://<hostname>.local:8765` from the iPad's browser — "Add to
-Home Screen" in Safari gives it an app-like icon.
+Home Screen" in Safari gives it an app-like icon. Use `http://`, not
+`https://` — the dev server only speaks plain HTTP, and some browsers try
+HTTPS by default for bare hostnames, which shows up server-side as garbled
+"Bad request version" lines in the log (a TLS handshake hitting an HTTP
+parser). If a saved home-screen icon was created from a bad URL, delete it
+and redo "Add to Home Screen" after loading the correct `http://` address.
 
 There is **no authentication**. `--host 0.0.0.0` is fine on a trusted home LAN
 or over Tailscale, but don't expose this to the open internet — it's a direct
@@ -191,6 +196,39 @@ window into your Messages history.
 
 Declares its `flask` dependency via inline script metadata (PEP 723), so
 `uv run --no-project` handles the environment automatically.
+
+### Running it in the background
+
+This is meant to be started once per machine and left running — e.g. one
+instance per household member, each on their own Mac, searching their own
+`chat.db`. To start it detached so it survives closing the terminal or ssh
+session:
+
+```sh
+nohup uv run --no-project search_messages_web.py --host 0.0.0.0 --port 8765 \
+    < /dev/null > search_messages_web.log 2>&1 &
+```
+
+All three redirects matter:
+
+- `< /dev/null` detaches stdin. Without this, the process still holds a
+  reference to the terminal's pty; if that terminal later closes (ssh
+  disconnect, closed window, killed tmux pane), the now-orphaned process can
+  be left with broken file descriptors. In practice this can resurface later
+  as completely unrelated commands run in that same terminal session
+  crashing at Python startup with `Fatal Python error: init_sys_streams` /
+  `OSError: [Errno 9] Bad file descriptor` — `nohup` alone only blocks
+  `SIGHUP`, it doesn't sever stdin.
+- `> search_messages_web.log 2>&1` captures the startup banner and any
+  warnings/errors instead of losing them once the terminal is gone.
+- the trailing `&` backgrounds it so the shell returns immediately.
+
+By default the server only logs warnings/errors, not every request, so the
+log file should stay quiet during normal use. Pass `--verbose` before
+backgrounding if you need full per-request logging while debugging.
+
+To stop it later: `pkill -f search_messages_web.py`, or find the PID with
+`ps aux | grep search_messages_web.py` and `kill` it.
 
 ---
 
