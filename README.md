@@ -4,9 +4,10 @@ Command-line tools for reading and searching your Messages history on macOS.
 
 - **`extract_messages.py`** — list threads and extract them to readable Markdown transcripts
 - **`search_messages.py`** — search across all threads, modeled after `rg` (ripgrep)
+- **`search_messages_web.py`** — minimal web UI for `search_messages.py`, for use from a phone or iPad
 - **`dump_handles.py`** — enumerate handle IDs to help build a contacts file
 
-All three tools read directly from `~/Library/Messages/chat.db`.
+All tools read directly from `~/Library/Messages/chat.db`.
 
 ## Prerequisites
 
@@ -163,6 +164,36 @@ search_messages.py --all --out results.md "kitty"
 
 ---
 
+## `search_messages_web.py`
+
+Minimal Flask-based web UI for `search_messages.py`, for use from an iPad or
+phone where a terminal isn't convenient. Runs `search_messages.py` as a
+subprocess for each request and renders its `--color=always` output as HTML
+(ANSI codes mapped to CSS classes), with a form covering the most commonly
+used flags: pattern, `-i`, `-F`, `--name`, `-C`, `-c`/`-l` modes, `--results`/`--all`.
+
+### Usage
+
+```sh
+# Local only (default)
+uv run --no-project search_messages_web.py
+
+# Reachable from other devices on the network (e.g. an iPad)
+uv run --no-project search_messages_web.py --host 0.0.0.0 --port 8765
+```
+
+Then visit `http://<hostname>.local:8765` from the iPad's browser — "Add to
+Home Screen" in Safari gives it an app-like icon.
+
+There is **no authentication**. `--host 0.0.0.0` is fine on a trusted home LAN
+or over Tailscale, but don't expose this to the open internet — it's a direct
+window into your Messages history.
+
+Declares its `flask` dependency via inline script metadata (PEP 723), so
+`uv run --no-project` handles the environment automatically.
+
+---
+
 ## `dump_handles.py`
 
 Prints every unique handle ID in the database, one per line, sorted. Useful for
@@ -177,9 +208,10 @@ dump_handles.py > handles.txt
 
 ## Notes
 
-- All three scripts open the database read-only (`PRAGMA query_only = ON`).
+- All scripts open the database read-only (`PRAGMA query_only = ON`).
 - `search_messages.py` imports `extract_messages` as a module for shared DB
-  access, decoding, and contact resolution.
+  access, decoding, and contact resolution. `search_messages_web.py` calls
+  `search_messages.py` as a subprocess rather than importing it.
 - Timestamps are stored as nanoseconds since 2001-01-01 (Apple epoch).
 - Messages whose `text` column is NULL are decoded from the `attributedBody`
   NSArchiver blob.
