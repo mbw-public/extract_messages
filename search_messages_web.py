@@ -306,6 +306,10 @@ def main():
     if args.host != "127.0.0.1":
         print("  bound to a non-localhost address — no authentication is provided,")
         print("  so only do this on a trusted network (or behind Tailscale).")
+    print(f"python interpreter: {sys.executable}")
+    print("  ^ if searches fail with 'unable to open database file' under launchd,")
+    print("    this is the binary that needs Full Disk Access (search_messages.py")
+    print("    runs as a subprocess of this same interpreter).")
 
     app.run(host=args.host, port=args.port)
 
