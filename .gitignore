@@ -1,5 +1,8 @@
 # Scratch files
+*.bak
 *.csv
+*.log
+*.out
 *.tsv
 *.txt
 
